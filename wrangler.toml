@@ -1,0 +1,8 @@
+name = "toshin-chieria-calender-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+[vars]
+SOURCE_BASE_URL = "http://toshin-sapporo.com/chieria/calendar/"
+SOURCE_PAGE_ID = "12"
+CALENDAR_ID = "33"
+TIMEZONE = "Asia/Tokyo"
