@@ -37,6 +37,7 @@ export interface CalendarMeta {
   timezone: string;
   year: number;
   month: number;
+  date?: string | null;
   fetchedAt: string;
 }
 

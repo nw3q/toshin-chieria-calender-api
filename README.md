@@ -47,6 +47,7 @@ npm run deploy
 - **クエリパラメータ**
   - `year` (任意): 取得する年。省略時は `TIMEZONE` での現在年。
   - `month` (任意): 取得する月 (1-12)。省略時は現在月。
+  - `date` (任意): `YYYY-MM-DD` 形式の日付。指定すると該当日付のイベントのみを返却し、`year` と `month` はこの日付から自動算出されます。
   - `format` (任意): `json` (既定) または `html`。`html` を指定すると生のカレンダー HTML を返却。
   - `skipCache` (任意): `1` または `true` を指定するとキャッシュをバイパス。
 
@@ -59,6 +60,7 @@ npm run deploy
       "timezone": "Asia/Tokyo",
       "year": 2025,
       "month": 10,
+      "date": "2025-10-04",
       "fetchedAt": "2025-10-04T03:12:45.123Z"
     },
     "events": [

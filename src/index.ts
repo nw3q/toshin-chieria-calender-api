@@ -1,7 +1,7 @@
 import { parseCalendar } from "./parser.js";
 import type { CalendarResponseBody, Env } from "./types.js";
 
-const DEFAULT_BASE_URL = "http://toshin-sapporo.com/chieria/calendar/";
+const DEFAULT_BASE_URL = "https://toshin-sapporo.com/chieria/calendar/";
 const DEFAULT_TIMEZONE = "Asia/Tokyo";
 const DEFAULT_CALENDAR_ID = "33";
 
@@ -12,10 +12,42 @@ interface RequestOptions {
   timezone: string;
   format: "json" | "html";
   bypassCache: boolean;
+  date?: {
+    iso: string;
+    day: number;
+  };
 }
 
 function pad(value: number): string {
   return value.toString().padStart(2, "0");
+}
+
+function parseDateParam(value: string): { year: number; month: number; day: number } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const [yearPart, monthPart, dayPart] = value.split("-");
+  const year = Number.parseInt(yearPart, 10);
+  const month = Number.parseInt(monthPart, 10);
+  const day = Number.parseInt(dayPart, 10);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  if (month < 1 || month > 12) {
+    return null;
+  }
+  if (day < 1 || day > 31) {
+    return null;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
 }
 
 function extractCurrentYearMonth(timezone: string): { year: number; month: number } {
@@ -44,11 +76,33 @@ function parseRequest(request: Request, env: Env): RequestOptions {
   const monthParam = url.searchParams.get("month");
   const formatParam = url.searchParams.get("format");
   const bypassCacheParam = url.searchParams.get("skipCache");
+  const dateParam = url.searchParams.get("date");
 
   const yearCandidate = yearParam ? Number.parseInt(yearParam, 10) : current.year;
   const monthCandidate = monthParam ? Number.parseInt(monthParam, 10) : current.month;
+  let dateSelection: RequestOptions["date"]; // undefined by default
 
-  if (!Number.isFinite(yearCandidate) || yearCandidate < 2000 || yearCandidate > 2100) {
+  if (dateParam) {
+    const parsedDate = parseDateParam(dateParam);
+    if (!parsedDate) {
+      throw new Response(
+        JSON.stringify({ error: "Invalid date parameter" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
+      );
+    }
+    dateSelection = {
+      iso: `${parsedDate.year}-${pad(parsedDate.month)}-${pad(parsedDate.day)}`,
+      day: parsedDate.day,
+    };
+  }
+
+  const effectiveYear = dateSelection ? Number.parseInt(dateSelection.iso.slice(0, 4), 10) : yearCandidate;
+  const effectiveMonth = dateSelection ? Number.parseInt(dateSelection.iso.slice(5, 7), 10) : monthCandidate;
+
+  if (!Number.isFinite(effectiveYear) || effectiveYear < 2000 || effectiveYear > 2100) {
     throw new Response(
       JSON.stringify({ error: "Invalid year parameter" }),
       {
@@ -58,7 +112,7 @@ function parseRequest(request: Request, env: Env): RequestOptions {
     );
   }
 
-  if (!Number.isFinite(monthCandidate) || monthCandidate < 1 || monthCandidate > 12) {
+  if (!Number.isFinite(effectiveMonth) || effectiveMonth < 1 || effectiveMonth > 12) {
     throw new Response(
       JSON.stringify({ error: "Invalid month parameter" }),
       {
@@ -72,34 +126,56 @@ function parseRequest(request: Request, env: Env): RequestOptions {
   const bypassCache = bypassCacheParam === "1" || bypassCacheParam === "true";
 
   return {
-    year: yearCandidate,
-    month: monthCandidate,
+    year: effectiveYear,
+    month: effectiveMonth,
     calendarId: env.CALENDAR_ID ?? DEFAULT_CALENDAR_ID,
     timezone,
     format,
     bypassCache,
+    date: dateSelection,
   };
 }
 
 async function fetchWithProtocolFallback(url: URL, init?: RequestInit): Promise<Response> {
+  let primaryResponse: Response | null = null;
+  let primaryError: unknown;
   try {
-    const response = await fetch(url, init);
-    if (response.ok || url.protocol === "http:") {
-      return response;
+    primaryResponse = await fetch(url, init);
+    if (primaryResponse.ok) {
+      return primaryResponse;
     }
   } catch (error) {
-    if (url.protocol === "http:") {
-      throw error;
+    primaryError = error;
+  }
+
+  const alternateProtocol = url.protocol === "https:" ? "http:" : url.protocol === "http:" ? "https:" : null;
+  if (alternateProtocol) {
+    const alternateUrl = new URL(url.toString());
+    alternateUrl.protocol = alternateProtocol;
+    try {
+      const alternateResponse = await fetch(alternateUrl, init);
+      if (alternateResponse.ok) {
+        return alternateResponse;
+      }
+      if (!primaryResponse) {
+        return alternateResponse;
+      }
+    } catch (alternateError) {
+      if (!primaryResponse) {
+        throw alternateError;
+      }
     }
   }
 
-  if (url.protocol === "https:") {
-    const downgraded = new URL(url.toString());
-    downgraded.protocol = "http:";
-    return fetch(downgraded, init);
+  if (primaryResponse) {
+    return primaryResponse;
   }
 
-  return fetch(url, init);
+  if (primaryError) {
+    throw primaryError;
+  }
+
+  throw new Error(`Failed to fetch ${url.toString()}`);
 }
 
 function deriveRestEndpoint(baseUrl: URL, pageId: string): URL {
@@ -130,7 +206,8 @@ async function obtainMarkup(env: Env, options: RequestOptions): Promise<{ markup
 
   const calendarResponse = await fetchWithProtocolFallback(calendarUrl, requestInit);
   if (calendarResponse.ok) {
-    return { markup: await calendarResponse.text(), sourceUrl: calendarUrl.toString() };
+    const resolvedUrl = calendarResponse.url || calendarUrl.toString();
+    return { markup: await calendarResponse.text(), sourceUrl: resolvedUrl };
   }
 
   if (env.SOURCE_PAGE_ID) {
@@ -165,6 +242,11 @@ function buildCacheKey(request: Request, options: RequestOptions): Request {
   cacheUrl.searchParams.set("month", pad(options.month));
   cacheUrl.searchParams.set("format", options.format);
   cacheUrl.searchParams.delete("skipCache");
+  if (options.date) {
+    cacheUrl.searchParams.set("date", options.date.iso);
+  } else {
+    cacheUrl.searchParams.delete("date");
+  }
   return new Request(cacheUrl.toString(), request);
 }
 
@@ -196,13 +278,17 @@ async function handleCalendarRequest(request: Request, env: Env): Promise<Respon
     return response;
   }
 
-  const events = parseCalendar(markup, {
+  let events = parseCalendar(markup, {
     year: options.year,
     month: options.month,
     calendarId: options.calendarId,
     sourceUrl,
     timezone: options.timezone,
   });
+
+  if (options.date) {
+    events = events.filter((event) => event.date === options.date?.iso);
+  }
 
   const body: CalendarResponseBody = {
     meta: {
@@ -211,6 +297,7 @@ async function handleCalendarRequest(request: Request, env: Env): Promise<Respon
       timezone: options.timezone,
       year: options.year,
       month: options.month,
+      date: options.date?.iso ?? null,
       fetchedAt: new Date().toISOString(),
     },
     events,
