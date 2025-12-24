@@ -1,57 +1,34 @@
 # toshin-chieria-calender-api
 
-東進衛星予備校 宮の沢ちえりあ前校の WordPress ページから校舎スケジュールを抽出し、Cloudflare Workers 上で JSON API として公開するプロジェクトです。
+[東進衛星予備校 宮の沢ちえりあ前校の校舎スケジュール](http://toshin-sapporo.com/chieria/calendar/ "校舎スケジュール | 東進衛星予備校 - 宮の沢ちえりあ前校")よりスケジュールを取得するREST API
 
-## 🧱 アーキテクチャ概要
-
-- **Cloudflare Workers (TypeScript)** でエッジ常駐の API を実装。
-- 指定月のカレンダーページを取得し、`node-html-parser` で HTML を解析してイベント情報を抽出。
-- 結果は Cloudflare の `caches.default` にキャッシュし、再取得を抑制。
-- WordPress ページ取得に失敗した場合は REST API (`/wp-json/wp/v2/pages/:id`) をフォールバックとして利用。
-
-## 🚀 環境構築
-
-事前に Node.js (18 以上) と npm を用意してください。
+## Development
 
 ```bash
 npm install
 ```
-
-ローカル開発サーバーを立ち上げる場合:
-
 ```bash
 npm run dev
 ```
 
-Cloudflare アカウントと wrangler の認証を済ませた上で、以下のコマンドでデプロイできます。
+## Deploy
 
 ```bash
 npm run deploy
 ```
 
-## ⚙️ 環境変数
-
-`wrangler.toml` の `[vars]` セクションで以下を設定できます。
-
-| 変数名             | デフォルト値                                         | 説明 |
-|--------------------|------------------------------------------------------|------|
-| `SOURCE_BASE_URL`  | `https://toshin-sapporo.com/chieria/calendar/`       | カレンダーを表示している WordPress ページの URL |
-| `SOURCE_PAGE_ID`   | `12`                                                 | WordPress REST API で参照する固定ページ ID (フォールバック用) |
-| `CALENDAR_ID`      | `33`                                                 | Simple Calendar のカレンダー ID |
-| `TIMEZONE`         | `Asia/Tokyo`                                         | デフォルトのタイムゾーン |
-
-## 📡 API 仕様
+## API Reference
 
 ### `GET /events`
 
-- **クエリパラメータ**
+- **Query Params**
   - `year` (任意): 取得する年。省略時は `TIMEZONE` での現在年。
   - `month` (任意): 取得する月 (1-12)。省略時は現在月。
-  - `date` (任意): `YYYY-MM-DD` 形式の日付。指定すると該当日付のイベントのみを返却し、`year` と `month` はこの日付から自動算出されます。
-  - `format` (任意): `json` (既定) または `html`。`html` を指定すると生のカレンダー HTML を返却。
+  - `date` (任意): `YYYY-MM-DD` 形式の日付。指定すると該当日付のイベントのみを返却し、`year` と `month` はこの日付から自動算出される。
+  - `format` (任意): `json` (既定) または `html`。`html` を指定するとページHTMLを返却。
   - `skipCache` (任意): `1` または `true` を指定するとキャッシュをバイパス。
 
-- **レスポンス (format=json)**
+- **Response Example**
   ```json
   {
     "meta": {
@@ -88,28 +65,12 @@ npm run deploy
   }
   ```
 
-- **レスポンス (format=html)**: 取得したカレンダー HTML をそのまま返します。
-
 ### `GET /healthz`
 
-ヘルスチェック用。`{ "status": "ok" }` を返します。
+サーバーのヘルスチェック用。`{ "status": "ok" }` を返す。
 
-## 🧪 テスト
-
-`vitest` を使用したユニットテストを用意しています。
+## Unit Test
 
 ```bash
 npm test
 ```
-
-## 🛠️ 実装メモ
-
-- HTML 解析には `node-html-parser` を利用。Simple Calendar プラグインの DOM 構造に依存しています。
-- イベントの終日判定はタイトル・時刻文字列からのヒューリスティック推定です。将来的に REST/JSON エンドポイントが判明した場合はそちらに置換できます。
-- 取得元サイトが HTTP のみの場合に備えて HTTPS→HTTP のプロトコルフォールバックを実装しています。
-
-## 🔮 今後の拡張案
-
-- ICS (iCalendar) 形式でのエクスポート対応
-- Cloudflare KV/D1 への永続キャッシュ
-- 取得元変更時のメトリクス／アラート連携
