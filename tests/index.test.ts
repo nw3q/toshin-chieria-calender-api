@@ -16,6 +16,7 @@ describe("worker.fetch", () => {
     SOURCE_PAGE_ID: "12",
     CALENDAR_ID: "33",
     TIMEZONE: "Asia/Tokyo",
+    USER_AGENT: "test/0.1",
   };
 
   beforeEach(() => {

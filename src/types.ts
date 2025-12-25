@@ -3,4 +3,5 @@ export type Env = {
   SOURCE_PAGE_ID?: string;
   CALENDAR_ID?: string;
   TIMEZONE?: string;
+  USER_AGENT?: string;
 };

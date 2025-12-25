@@ -1,4 +1,3 @@
-import { DEFAULT_CALENDAR_ID, DEFAULT_TIMEZONE } from "../../constants.js";
 import type { Env } from "../../types.js";
 import { extractCurrentYearMonth, pad } from "../../utils.js";
 
@@ -51,7 +50,11 @@ export class RequestError extends Error {
 
 export function parseRequest(request: Request, env: Env): RequestOptions {
     const url = new URL(request.url);
-    const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+
+    if (!env.TIMEZONE) {
+        throw new RequestError("Configuration error: TIMEZONE is missing", 500);
+    }
+    const timezone = env.TIMEZONE;
     const current = extractCurrentYearMonth(timezone);
 
     const yearParam = url.searchParams.get("year");
@@ -89,10 +92,14 @@ export function parseRequest(request: Request, env: Env): RequestOptions {
     const format: "json" | "html" = formatParam === "html" ? "html" : "json";
     const bypassCache = bypassCacheParam === "1" || bypassCacheParam === "true";
 
+    if (!env.CALENDAR_ID) {
+        throw new RequestError("Configuration error: CALENDAR_ID is missing", 500);
+    }
+
     return {
         year: effectiveYear,
         month: effectiveMonth,
-        calendarId: env.CALENDAR_ID ?? DEFAULT_CALENDAR_ID,
+        calendarId: env.CALENDAR_ID,
         timezone,
         format,
         bypassCache,

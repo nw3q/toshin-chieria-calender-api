@@ -1,4 +1,3 @@
-import { DEFAULT_BASE_URL } from "../../constants.js";
 import type { Env } from "../../types.js";
 import { pad } from "../../utils.js";
 import type { RequestOptions } from "./request.js";
@@ -56,13 +55,20 @@ function deriveRestEndpoint(baseUrl: URL, pageId: string): URL {
 }
 
 export async function obtainMarkup(env: Env, options: RequestOptions): Promise<{ markup: string; sourceUrl: string }> {
-    const base = env.SOURCE_BASE_URL ?? DEFAULT_BASE_URL;
+    if (!env.SOURCE_BASE_URL) {
+        throw new Error("Configuration error: SOURCE_BASE_URL is missing");
+    }
+    const base = env.SOURCE_BASE_URL;
     const calendarUrl = new URL(base);
     calendarUrl.searchParams.set("simcal_month", `${options.year}-${pad(options.month)}`);
 
+    if (!env.USER_AGENT) {
+        throw new Error("Configuration error: USER_AGENT is missing");
+    }
+
     const requestInit: RequestInit = {
         headers: {
-            "User-Agent": "toshin-chieria-calender-api/0.1 (+https://github.com/Lasxle/toshin-chieria-calender-api)",
+            "User-Agent": env.USER_AGENT,
             "Accept": "text/html,application/xhtml+xml",
         },
         cf: {
@@ -82,7 +88,7 @@ export async function obtainMarkup(env: Env, options: RequestOptions): Promise<{
         restUrl.searchParams.set("_fields", "content.rendered,link");
         const restResponse = await fetchWithProtocolFallback(restUrl, {
             headers: {
-                "User-Agent": "toshin-chieria-calender-api/0.1 (+https://github.com/Lasxle/toshin-chieria-calender-api)",
+                "User-Agent": env.USER_AGENT,
                 Accept: "application/json",
             },
         });
