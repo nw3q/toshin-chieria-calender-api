@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { parseCalendar, type ParseContext } from "../src/parser.js";
+import { parseCalendar, type ParseContext } from "../src/routes/calendar/parser.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

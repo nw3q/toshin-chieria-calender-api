@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import worker from "../src/index.js";
-import type { CalendarResponseBody, Env } from "../src/types.js";
+import type { CalendarResponseBody } from "../src/routes/calendar/types.js";
+import type { Env } from "../src/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const calendarHtml = readFileSync(join(__dirname, "fixtures", "oct-2025.html"), "utf8");

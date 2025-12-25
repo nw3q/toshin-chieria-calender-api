@@ -1,4 +1,5 @@
 import { parse } from "node-html-parser";
+import { pad } from "../../utils.js";
 import type { CalendarEvent } from "./types.js";
 
 export interface ParseContext {
@@ -11,10 +12,6 @@ export interface ParseContext {
 
 const FULLWIDTH_COLON_REGEX = /：/g;
 const TIME_FRAGMENT_REGEX = /\b([01]?\d|2[0-3]):[0-5]\d\b/;
-
-function pad(value: number): string {
-  return value.toString().padStart(2, "0");
-}
 
 function buildIsoDate(year: number, month: number, day: number): string {
   return `${year}-${pad(month)}-${pad(day)}`;
