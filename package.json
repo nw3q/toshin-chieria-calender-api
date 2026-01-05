@@ -1,13 +1,11 @@
 {
   "name": "toshin-chieria-calender-api",
-  "version": "0.1.0",
-  "description": "Cloudflare Worker API for scraping calendar data from toshin-sapporo.com/chieria",
+  "version": "1.0.0",
+  "description": "REST API for Toshin Miyanosawa Chieria",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "node-html-parser": "^6.1.13"

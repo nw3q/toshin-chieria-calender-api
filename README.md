@@ -67,10 +67,5 @@ pnpm deploy
 
 ### `GET /healthz`
 
-サーバーのヘルスチェック用。`{ "status": "ok" }` を返す。
-
-## Unit Test
-
-```bash
-npm test
-```
+サーバーのヘルスチェック用。`{ "status": "ok", "timestamp": "Date().toISOString()" }` を返す。
+なんちゃってヘルスチェック。

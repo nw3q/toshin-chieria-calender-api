@@ -1,6 +1,6 @@
 import { handleCalendarRequest } from "./routes/calendar/index.js";
 import { RequestError } from "./routes/calendar/request.js";
-import { handleHealthCheck } from "./routes/health/index.js";
+import { handleHealthCheck } from "./routes/healthz/index.js";
 import type { Env } from "./types.js";
 
 function notFound(): Response {
